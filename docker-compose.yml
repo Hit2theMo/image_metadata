@@ -1,0 +1,51 @@
+version: "3.7"
+services:
+  flask_app:
+    build: './flask_app'
+    restart: always
+    volumes:
+      - file-uploads:/flask-app/batch_parsing
+    command: /usr/local/bin/gunicorn -w 9 -b 0.0.0.0:5000 wsgi:app
+    depends_on:
+      - redis
+
+  celery_worker:
+    build: './worker'
+    #user: nobody
+    depends_on:
+      - redis
+    volumes:
+      - file-uploads:/flask-app/batch_parsing
+    restart: always
+
+  celery_monitor:
+    build: './worker'
+    ports:
+     - "5555:5555"
+    entrypoint: celery 
+    command: -A batch_parsing --broker=redis://redis:6379/0 flower --port=5555 --address=0.0.0.0
+    depends_on:
+      - redis
+    #volumes: ['./celery-queue:/queue']
+    restart: always
+
+  redis:
+    build: './redis'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: always
+
+  nginx:
+    build: ./nginx
+    #container_name: nginx
+    restart: always
+    ports:
+      - "81:81"
+    depends_on:
+      - flask_app
+    #volumes:
+     # - ./project.conf:/etc/nginx/conf.d/project.conf
+
+
+volumes:
+  file-uploads:
+ 
