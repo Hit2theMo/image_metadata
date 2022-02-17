@@ -35,14 +35,14 @@ def generate_filename(org_name):
 
 
 @celery_app.task(soft_time_limit=CELERY_TASK_TIMEOUT)
-def parseUnzippedImages(path):
+def parseUnzippedFiles(path):
     path = os.path.join('/','flask-app', path)
     logger.info('Got Request - Starting work ')
     #raise ValueError('test')
     capture_message("Starting the Batch Parsing of {0}".format(path))
     file_names = os.listdir(path)
     # file_rename_dict = {}
-    unparsed_images = []
+    unparsed_files = []
     batch_output = {}
     final_batch_output = {}
     for fn in file_names:
@@ -57,26 +57,26 @@ def parseUnzippedImages(path):
             # file_rename_dict[fn] = new_file_name
             # Rename file to the new name
             os.rename(org_file_path, new_file_path)
-            output_dict = extractDataPoints(str(new_file_path), file_extn)
+            output_dict = extractMetadata(str(new_file_path))
             if not output_dict:
                 raise Exception
             temp_dict = {}
-            temp_dict["original_resume_name"] = fn
+            temp_dict["original_filename"] = fn
             temp_dict["extracted_data"] = output_dict
             batch_output[new_file_name] = temp_dict
 
         except Exception as e:
             logger.exception(
-                f"Error in batch parser while parsing resume- {fn}- {e}"
+                f"Error in batch parser while parsing file- {fn}- {e}"
             )
             if new_file_path:
-                unparsed_images.append(str(fn))
-                # unparsed_images.append(str(new_file_path))
+                unparsed_files.append(str(fn))
+                # unparsed_files.append(str(new_file_path))
             continue
 
     final_batch_output["output"] = batch_output
-    final_batch_output["unparsed_images"] = unparsed_images
-    # final_batch_output["unparsed_resume_zip_as_base64"] = base64str
+    final_batch_output["unparsed_files"] = unparsed_files
+    # final_batch_output["unparsed_file_zip_as_base64"] = base64str
     json_object = json.dumps(final_batch_output, indent=4)
     capture_message(
         "Finished processing batch file- {0}, JSON Result-{1}".format(path, json_object)
@@ -86,7 +86,7 @@ def parseUnzippedImages(path):
 
 
 if __name__ == "__main__":
-    path = r"batch_parsing\ipNLfea4wEqA34W8YnFzoe"
-    # path = r'batch_parsing\B5gK5FDw7U8jbgmmq7TR2J'
-    print(json.loads(parseUnzippedImages(path)))
+    # path = r"batch_parsing\ipNLfea4wEqA34W8YnFzoe"
+    path = r'/mnt/c/Users/Mohit Khanwale/Desktop/SplitReq/batch_image_parser/worker/images'
+    print(json.loads(parseUnzippedFiles(path)))
     print(time.perf_counter())
